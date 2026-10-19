@@ -1,0 +1,157 @@
+type BatchId = nat;
+type ChunkId = nat;
+type Key = text;
+
+type HeaderField = record { text; text };
+
+type HttpRequest = record {
+  method: text;
+  url: text;
+  headers: vec HeaderField;
+  body: blob;
+  certificate_version: opt nat16;
+};
+
+type HttpResponse = record {
+  status_code: nat16;
+  headers: vec HeaderField;
+  body: blob;
+  streaming_strategy: opt StreamingStrategy;
+  upgrade: opt bool;
+};
+
+type StreamingCallbackToken = record {
+  key: Key;
+  content_encoding: text;
+  index: nat;
+  sha256: opt blob;
+};
+
+type StreamingCallbackHttpResponse = record {
+  body: blob;
+  token: opt StreamingCallbackToken;
+};
+
+type StreamingStrategy = variant {
+  Callback: record {
+    callback: func (StreamingCallbackToken) -> (opt StreamingCallbackHttpResponse) query;
+    token: StreamingCallbackToken;
+  };
+};
+
+type CreateAssetArguments = record {
+  key: Key;
+  content_type: text;
+  max_age: opt nat64;
+  headers: opt vec HeaderField;
+  enable_aliasing: opt bool;
+  allow_raw_access: opt bool;
+};
+
+type SetAssetContentArguments = record {
+  key: Key;
+  content_encoding: text;
+  chunk_ids: vec ChunkId;
+  last_chunk: opt blob;
+  sha256: opt blob;
+};
+
+type UnsetAssetContentArguments = record { key: Key; content_encoding: text };
+type DeleteAssetArguments = record { key: Key };
+type ClearArguments = record {};
+
+type SetAssetPropertiesArguments = record {
+  key: Key;
+  max_age: opt opt nat64;
+  headers: opt opt vec HeaderField;
+  allow_raw_access: opt opt bool;
+  is_aliased: opt opt bool;
+};
+
+type BatchOperationKind = variant {
+  CreateAsset: CreateAssetArguments;
+  SetAssetContent: SetAssetContentArguments;
+  UnsetAssetContent: UnsetAssetContentArguments;
+  DeleteAsset: DeleteAssetArguments;
+  Clear: ClearArguments;
+  SetAssetProperties: SetAssetPropertiesArguments;
+};
+
+type CommitBatchArguments = record {
+  batch_id: BatchId;
+  operations: vec BatchOperationKind;
+};
+
+type AssetEncodingDetails = record {
+  content_encoding: text;
+  sha256: opt blob;
+  length: nat;
+  modified: nat64;
+};
+
+type AssetDetails = record {
+  key: Key;
+  content_type: text;
+  encodings: vec AssetEncodingDetails;
+};
+
+type AssetProperties = record {
+  max_age: opt nat64;
+  headers: opt vec HeaderField;
+  allow_raw_access: opt bool;
+  is_aliased: opt bool;
+};
+
+type GetArg = record {
+  key: Key;
+  accept_encodings: vec text;
+};
+
+type EncodedAsset = record {
+  content: blob;
+  content_type: text;
+  content_encoding: text;
+  total_length: nat;
+  sha256: opt blob;
+};
+
+type GetChunkArg = record {
+  key: Key;
+  content_encoding: text;
+  index: nat;
+  sha256: opt blob;
+};
+
+type GetChunkResponse = record { content: blob };
+
+type CreateChunksArg = record { batch_id: BatchId; content: vec blob };
+type CreateChunksResponse = record { chunk_ids: vec ChunkId };
+type DeployTicketStateView = record {
+  enforce_deploy_ticket: bool;
+  key_ids: vec text;
+  active_sessions: nat64;
+  replay_entries: nat64;
+  batch_bindings: nat64;
+};
+
+service : {
+  api_version: () -> (nat16) query;
+  authorize: (principal) -> ();
+  begin_deploy: (text, blob) -> ();
+  create_batch: () -> (record { batch_id: BatchId });
+  create_chunk: (record { batch_id: BatchId; content: blob }) -> (record { chunk_id: ChunkId });
+  create_chunks: (CreateChunksArg) -> (CreateChunksResponse);
+  deauthorize: (principal) -> ();
+  commit_batch: (CommitBatchArguments) -> ();
+  get: (GetArg) -> (EncodedAsset) query;
+  get_chunk: (GetChunkArg) -> (GetChunkResponse) query;
+  get_asset_properties: (Key) -> (AssetProperties) query;
+  http_request: (HttpRequest) -> (HttpResponse) query;
+  http_request_streaming_callback: (StreamingCallbackToken) -> (opt StreamingCallbackHttpResponse) query;
+  get_deploy_ticket_state: () -> (DeployTicketStateView) query;
+  list: () -> (vec AssetDetails) query;
+  list_authorized: () -> (vec principal) query;
+  set_deploy_ticket_enforcement: (bool) -> ();
+  set_deploy_ticket_verifier: (text, blob) -> ();
+  set_asset_properties: (SetAssetPropertiesArguments) -> ();
+}

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: icp-replica
+  namespace: workspace-alpha
+spec:
+  selector:
+    app: icp-replica
+  ports:
+    - name: replica
+      port: 4943
+      targetPort: replica

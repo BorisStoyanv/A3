@@ -1,0 +1,24 @@
+{
+  "name": "@a3/api",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A3 control-plane API and Kubernetes build/deploy orchestration.",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@google-cloud/kms": "^6.3.0",
+    "argon2": "^0.45.1",
+    "cookie": "^1.0.2",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.3",
+    "pg": "^8.13.0",
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.1.0",
+    "stripe": "^22.1.1"
+  },
+  "private": true,
+  "license": "MIT"
+}

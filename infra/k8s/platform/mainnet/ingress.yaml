@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: icp-control-ui
+  namespace: workspace-alpha
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: a3-public
+  tls:
+    - hosts:
+        - ui.example.com
+      secretName: ui-a3icp-tls
+  rules:
+    - host: ui.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: icp-frontend
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: icp-control-api
+  namespace: workspace-alpha
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: a3-public
+  tls:
+    - hosts:
+        - api.example.com
+      secretName: api-a3icp-tls
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: icp-backend
+                port:
+                  number: 3000

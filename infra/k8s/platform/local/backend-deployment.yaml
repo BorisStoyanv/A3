@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: icp-backend
+  namespace: workspace-alpha
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: icp-backend
+  template:
+    metadata:
+      labels:
+        app: icp-backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      serviceAccountName: workspace-alpha-backend
+      containers:
+        - name: backend
+          image: a3-backend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: icp-backend-config
+            - secretRef:
+                name: icp-backend-secrets
+          env:
+            - name: DEPLOY_MODE
+              value: "job"
+            - name: DEPLOY_JOB_IMAGE
+              value: a3-backend:local
+            - name: WORKSPACE_NAMESPACE
+              value: workspace-alpha
+            - name: DEPLOY_IDENTITY_PEM
+              value: /workspace/identity/identity.pem
+            - name: DEPLOY_IDENTITY_NAME
+              value: Uploader-A3
+            - name: DEPLOY_IDENTITY_SECRET
+              value: identity-uploader-a3
+            - name: DEPLOY_BUILD_SERVICE_ACCOUNT
+              value: workspace-alpha-build-runner
+            - name: DEPLOY_DEPLOY_SERVICE_ACCOUNT
+              value: workspace-alpha-deploy-runner
+            - name: DEPLOY_TICKET_ENABLED
+              value: "true"
+            - name: DEPLOY_TICKET_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: deploy-ticket-signer
+                  key: key_id
+            - name: DEPLOY_TICKET_PRIVATE_KEY_PEM
+              valueFrom:
+                secretKeyRef:
+                  name: deploy-ticket-signer
+                  key: private_key_pem
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          volumeMounts:
+            - name: workspace-storage
+              mountPath: /workspace/storage
+            - name: identity-secret
+              mountPath: /workspace/identity
+              readOnly: true
+      volumes:
+        - name: workspace-storage
+          persistentVolumeClaim:
+            claimName: workspace-alpha-artifacts
+        - name: identity-secret
+          secret:
+            secretName: identity-uploader-a3

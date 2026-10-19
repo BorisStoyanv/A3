@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - workspace-namespace.yaml
+  - workspace-rbac.yaml
+  - workspace-pvc.yaml
+  - backend-configmap.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - ingress.yaml
+  - postgres-service.yaml
+  - postgres-statefulset.yaml
+  - replica-service.yaml
+  - replica-deployment.yaml

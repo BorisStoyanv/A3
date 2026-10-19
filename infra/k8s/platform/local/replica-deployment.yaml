@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: icp-replica
+  namespace: workspace-alpha
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: icp-replica
+  template:
+    metadata:
+      labels:
+        app: icp-replica
+    spec:
+      containers:
+        - name: replica
+          image: a3-backend:local
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -lc
+            - >
+              mkdir -p /tmp/replica && cd /tmp/replica &&
+              echo '{"version":1}' > dfx.json &&
+              exec dfx start --host 0.0.0.0:4943
+          ports:
+            - name: replica
+              containerPort: 4943
+          readinessProbe:
+            httpGet:
+              path: /api/v2/status
+              port: replica
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v2/status
+              port: replica
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          volumeMounts:
+            - name: replica-state
+              mountPath: /tmp/replica
+      volumes:
+        - name: replica-state
+          emptyDir: {}

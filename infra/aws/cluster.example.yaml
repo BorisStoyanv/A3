@@ -1,0 +1,42 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: a3icp
+  region: eu-central-1
+  version: "1.35"
+
+vpc:
+  clusterEndpoints:
+    publicAccess: true
+    privateAccess: true
+
+iam:
+  withOIDC: true
+
+addons:
+  - name: vpc-cni
+    configurationValues: |
+      enableNetworkPolicy: "true"
+      env:
+        NETWORK_POLICY_ENFORCING_MODE: "strict"
+  - name: coredns
+  - name: kube-proxy
+  - name: aws-ebs-csi-driver
+    attachPolicyARNs:
+      - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+
+managedNodeGroups:
+  - name: ng-amd64-1
+    instanceType: t3.large
+    desiredCapacity: 1
+    minSize: 1
+    maxSize: 1
+    amiFamily: AmazonLinux2023
+    volumeSize: 30
+    volumeType: gp3
+    privateNetworking: false
+    disableIMDSv1: true
+    disablePodIMDS: true
+    labels:
+      role: a3icp-worker

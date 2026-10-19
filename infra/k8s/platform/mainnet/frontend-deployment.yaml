@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: icp-frontend
+  namespace: workspace-alpha
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: icp-frontend
+  template:
+    metadata:
+      labels:
+        app: icp-frontend
+    spec:
+      serviceAccountName: workspace-alpha-frontend
+      automountServiceAccountToken: false
+      containers:
+        - name: frontend
+          image: a3-dashboard:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi

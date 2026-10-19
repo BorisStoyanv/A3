@@ -1,0 +1,18 @@
+[package]
+name = "host_asset_canister"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Tenant-aware certified asset hosting for A3"
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+ic-cdk = "0.19"
+candid = "0.10.18"
+ic-certified-assets = { git = "https://github.com/dfinity/sdk", rev = "c2060279e2dad7d18fe9fbe0112293a74554b8c2" }
+ed25519-dalek = { version = "2.1.1", default-features = false, features = ["std"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_cbor = "0.11"

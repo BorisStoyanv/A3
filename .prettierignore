@@ -1,0 +1,8 @@
+node_modules
+dist
+target
+.dfx
+package-lock.json
+Cargo.lock
+*.cbor
+*.did

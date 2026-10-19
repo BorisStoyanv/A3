@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "canisters": {
+    "host_asset_canister": {
+      "type": "rust",
+      "package": "host_asset_canister",
+      "candid": "src/host_asset_canister.did"
+    }
+  }
+}

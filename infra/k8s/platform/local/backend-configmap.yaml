@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: icp-backend-config
+  namespace: workspace-alpha
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  ICP_NETWORK: "local"
+  DFX_IDENTITY: "Uploader-A3"
+  LOG_LEVEL: "info"
+  DEPLOY_REPLICA_HOST: "icp-replica.workspace-alpha.svc.cluster.local:4943"
+  DEPLOY_WORKDIR_BASE: "/workspace/storage"
+  HOST_CANISTER_ID: ""
+  SESSION_COOKIE_SECURE: "false"
+  SESSION_COOKIE_DOMAIN: ".icp.localtest.me"
+  ALLOWED_ORIGINS: "http://ui.icp.localtest.me,http://api.icp.localtest.me,http://localhost:3000"
+  DEPLOY_MODE_TYPE: "hosted"
+  FRONTEND_BASE_URL: "http://ui.icp.localtest.me"
+  APP_PUBLIC_URL: "http://ui.icp.localtest.me"
+  API_BASE_URL: "http://api.icp.localtest.me"
+  CSRF_COOKIE_DOMAIN: ".icp.localtest.me"
+  HOST_BASE_DOMAIN: "icp.localtest.me"

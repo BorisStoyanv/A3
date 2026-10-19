@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: icp-control
+  namespace: workspace-alpha
+spec:
+  ingressClassName: a3-public
+  rules:
+    - host: api.icp.localtest.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: icp-backend
+                port:
+                  number: 3000
+    - host: ui.icp.localtest.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: icp-frontend
+                port:
+                  number: 80
+    - host: replica.icp.localtest.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: icp-replica
+                port:
+                  number: 4943
+    - host: "*.icp.localtest.me"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: icp-replica
+                port:
+                  number: 4943
