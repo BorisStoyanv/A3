@@ -19,7 +19,8 @@
     "format:check": "prettier --check .",
     "build": "npm run build --workspace frontend",
     "test": "npm test --workspace backend",
-    "check": "npm run lint && npm run format:check && npm test && npm run build"
+    "check": "npm run lint && npm run format:check && npm test && npm run build",
+    "demo": "npm run build && node scripts/demo-server.cjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

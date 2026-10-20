@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-labelledby="title desc">
-  <title id="title">A3 dashboard screenshot placeholder</title>
-  <desc id="desc">Replace this placeholder with a real dashboard screenshot from a demo account.</desc>
-  <rect width="1200" height="540" rx="20" fill="#101727"/>
-  <rect x="24" y="24" width="1152" height="492" rx="12" fill="#172238" stroke="#3d4b65" stroke-dasharray="8 8"/>
-  <text x="600" y="220" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="48" font-weight="700">A3</text>
-  <text x="600" y="283" text-anchor="middle" fill="#c3d1e7" font-family="Arial, sans-serif" font-size="25">Dashboard screenshot / deployment GIF</text>
-  <text x="600" y="328" text-anchor="middle" fill="#91a4bf" font-family="Arial, sans-serif" font-size="20">Placeholder — replace with a real demo-account capture</text>
-</svg>

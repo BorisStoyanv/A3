@@ -1,156 +1,165 @@
-# A3
+# A3 — Git-to-ICP Deployment Automation
 
-**Push to GitHub. Build in Kubernetes. Publish a static frontend to the Internet Computer.**
+**A Git-connected platform that builds static frontends in Kubernetes and deploys them to Internet Computer canisters.**
 
 [![CI](https://github.com/BorisStoyanv/A3/actions/workflows/ci.yml/badge.svg)](https://github.com/BorisStoyanv/A3/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Node.js 24](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white)
-![React](https://img.shields.io/badge/React-18-149eca?logo=react&logoColor=white)
 ![Rust](https://img.shields.io/badge/Canister-Rust-000000?logo=rust)
 ![Kubernetes](https://img.shields.io/badge/Workers-Kubernetes-326ce5?logo=kubernetes&logoColor=white)
 
-A3 is a Git-connected hosting platform built as a diploma project. It combines a React dashboard, a Node.js control plane, isolated build and deploy jobs, and a Rust canister that serves certified static assets. The control plane was deployed on Google Kubernetes Engine and subsequently Amazon EKS; the published manifests share a Kubernetes deployment model, with an EKS provisioning example.
+Built as a diploma project, A3 brings the familiar **push → build → deploy** workflow to ICP static hosting. It spans a React dashboard, a Node.js API, a persistent PostgreSQL deployment queue, Kubernetes workers, and a Rust asset canister. The control plane was deployed on **Google Kubernetes Engine** and subsequently **Amazon EKS**.
 
-**Pilot snapshot: 34 users · 38 projects · 283 deployment records.** These are historical database totals from the June 12, 2026 snapshot, not monthly active users, paying customers, or a claim that every deployment succeeded. No customer records or database dumps are included here.
+**Pilot snapshot:** 34 users · 38 projects · 283 deployment records, as of June 12, 2026. These are historical database totals; deployment records include attempts, and user totals do not establish active or paying users.
 
-## See it
+[Try the local demo](#try-the-dashboard) · [Architecture](#architecture) · [Code tour](#explore-the-code) · [Deployment guide](docs/deployment.md)
 
-> **Live demo:** pending — add a verified public URL here.
->
-> **Screenshot / GIF:** pending — replace the placeholder below with a dashboard capture using a demo account.
+![A3 dashboard showing projects, build and deploy stages, logs, and activity charts](docs/screenshots/overview.png)
 
-![Dashboard screenshot placeholder](docs/dashboard-placeholder.svg)
+_Actual application UI, captured locally with synthetic demo data. Sample URLs, logs, durations, and success rates illustrate the interface; they are separate from the historical pilot totals above._
+
+## Engineering highlights
+
+- **Build/deploy isolation:** separate Kubernetes jobs, distinct service accounts, no uploader identity in the build pod, and no customer environment variables in the deploy job. Deployment imports validated static files and regenerates trusted `dfx` configuration instead of executing build-supplied hooks.
+- **GitHub authorization:** App installations are checked against the logged-in user's GitHub access before repository-scoped clone tokens are minted. A supplied installation ID is not treated as proof of access.
+- **Durable orchestration:** a PostgreSQL queue tracks deployment stages, concurrency, logs, notifications, and host assignment across API restarts.
+- **Tenant-aware canister:** Rust wraps certified asset serving with tenant namespaces and signed deployment tickets, including expiry and replay protection.
+- **Cloud operations:** Docker images, Kubernetes RBAC, storage and network policies, an EKS provisioning example, and deployment experience on GKE and EKS.
+- **Repeatable checks:** security regression tests exercise actual API routes and subprocess environments; GitHub Actions runs lint, formatting, tests, frontend builds, and Rust checks.
+
+## Try the dashboard
+
+Requires **Node.js 24** and npm. No database, GitHub App, wallet, or cloud credentials are needed for this preview.
+
+```sh
+git clone https://github.com/BorisStoyanv/A3.git
+cd A3
+npm ci
+npm run demo
+```
+
+Open **http://127.0.0.1:4173**. Explore the overview, deployment history, project configuration, and theme toggle. The preview serves the real frontend with a read-only fixture API; it does not build repositories or deploy sites. All write requests are rejected. See [demo details and screenshot provenance](docs/demo.md).
+
+<details>
+<summary><strong>More screenshots — deployment inspection and project configuration</strong></summary>
+
+### Deployment history and logs
+
+Inspect individual runs, separate build/deploy outcomes, and stage logs.
+
+![A3 deployment history and selected run logs](docs/screenshots/deployments.png)
+
+### Project configuration
+
+Configure the build root, command, output directory, and encrypted build-variable entries.
+
+![A3 project build configuration and environment-variable controls](docs/screenshots/project-settings.png)
+
+All screenshots use the same synthetic, read-only demo. They are browser captures of the existing React components.
+
+</details>
 
 ## What it does
 
-1. Sign in with GitHub and authorize an installation of the A3 GitHub App.
-2. Select a repository and branch. Set the root directory, build command, output directory, and optional build-time environment variables.
-3. Push a commit. A verified GitHub webhook queues a deployment; a Kubernetes job clones and builds the project.
-4. A separate job imports only the validated static output, regenerates trusted deployment configuration, and uploads it to an ICP host canister.
-5. Follow progress and logs in the dashboard and open the deployed site's URL.
+1. Sign in with GitHub and authorize the A3 GitHub App for a repository.
+2. Select a branch and configure the build root, command, output directory, and optional build-time variables.
+3. Push a commit. A signed webhook queues a deployment, and a Kubernetes build job produces static output.
+4. A separate deploy job validates the artifact and uploads assets to an ICP host canister.
+5. Inspect progress in the dashboard and open the deployed site's URL through the configured hosting gateway.
 
-The primary hosting mode shares a canister across sites under tenant asset prefixes. A routing layer connects a site's hostname to its assigned canister and tenant path. This reduces the need to create and fund a canister for every small site, while introducing shared capacity, operator custody, and isolation responsibilities.
+The primary mode shares a host canister across sites under tenant asset prefixes. Sharing reduces per-site provisioning, but introduces shared capacity, operator custody, and tenant-isolation responsibilities.
 
-A3 hosts **static output**: HTML, CSS, JavaScript, images, and browser applications. A statically exported framework app can work; a framework app that requires a server cannot run its server here. There is no customer Node.js server, SSR runtime, serverless function runtime, or hosted customer database. Browser applications can call independently hosted APIs.
-
-## Why ICP
-
-ICP uses a **reverse-gas model**: canisters pay for their resource consumption, so visitors do not need a wallet or tokens to load a website. Static query execution currently has no cycle fee. That makes ICP an interesting static asset origin, particularly for applications already using the network.
-
-It does **not** make the service free to operate. Storage, asset uploads and other updates, canister funding, Kubernetes workers, PostgreSQL, DNS, and any external edge service still have costs. Query pricing and resource limits can change; see the [official cycle-cost reference](https://docs.internetcomputer.org/references/cycle-costs/). This project does not establish that A3 is cheaper overall than Vercel or another incumbent.
+**Supported workload:** static HTML/CSS/JavaScript, browser applications, and statically exported framework sites. Customer SSR servers, serverless functions, and databases are outside the hosting runtime. Applications can call independently hosted APIs. Optional GitLab and Stripe integrations exist in the code and require separate configuration.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     GitHub[GitHub repository] -->|signed webhook| API[Node.js API]
-    UI[React dashboard] <-->|session / projects / logs| API
-    API <-->|users / queue / encrypted config| DB[(PostgreSQL)]
+    UI[React dashboard] <-->|projects / status / logs| API
+    API <-->|queue / accounts / encrypted config| DB[(PostgreSQL)]
     API -->|schedule| Build[Kubernetes build job]
     GitHub -->|scoped clone token| Build
-    Build -->|static artifact + digest| Storage[(Artifact volume)]
+    Build -->|static files + digest| Artifact[(Artifact volume)]
     API -->|schedule + signed ticket| Deploy[Kubernetes deploy job]
-    Storage -->|read only; validate static files| Deploy
+    Artifact -->|read only; validate| Deploy
     Identity[Uploader identity] -->|deploy job only| Deploy
     Deploy -->|certified asset upload| ICP[ICP host canisters]
-    Visitors[Visitors] --> Routing[Hostname / tenant routing]
+    Visitors[Visitors] --> Routing[Hostname / tenant gateway]
     Routing --> ICP
 ```
 
-The control plane and workers run on a chosen Kubernetes cloud. GKE and EKS represent deployment history and deployment options, rather than simultaneous active-active failover. ICP is the website asset origin; the dashboard, account database, build queue, and build compute remain conventional infrastructure.
-
-## Features
-
-- GitHub App sign-in, repository selection, branch-triggered builds, and repository-scoped clone credentials.
-- Persistent deployment queue, concurrency limits, deployment stages, logs, and notifications.
-- Configurable build roots, commands, and static output paths; plain HTML repositories can skip a build.
-- Encrypted environment-variable storage with local AES-GCM or Google Cloud KMS; variables are supplied only to build subprocesses.
-- Separate build and deploy jobs, with no build access to the uploader identity or Kubernetes service-account token.
-- Tenant-aware Rust asset canister with signed deployment tickets, expiry, replay protection, and tenant-bound upload checks.
-- Dashboard for projects, deployments, usage summaries, and administrator host-canister management.
-- Optional GitLab integration and Stripe billing code. These require separate configuration and are not evidence of production revenue.
-
-Canister ownership hand-off (“Eject”) is incomplete and disabled by default. It is a roadmap item, not a current portability guarantee.
+Kubernetes hosts the control plane and build compute; ICP serves website assets. GKE and EKS are deployment history and options, not an active-active failover system. Production requires an operator-configured tenant gateway; a standalone edge-router implementation is not bundled here.
 
 ## Stack and decisions
 
-| Component      | Technology                                                          | Reason and trade-off                                                                                                                                 |
-| -------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dashboard      | React 18, Vite 8, Recharts                                          | A browser dashboard with a separate analytics bundle. The UI is static; the control API is separate.                                                 |
-| API            | Node.js 24, Express 4, PostgreSQL 16                                | Simple HTTP orchestration and durable relational state. Database-backed queues avoid another broker, but need careful concurrency handling.          |
-| Workers        | Kubernetes Jobs, Docker, `dfx`                                      | Per-deployment resource limits and separate credentials. More operational work than a managed build service; containers still share the host kernel. |
-| Asset origin   | Rust, ICP CDK, certified-assets library                             | Reuses certified asset serving and adds tenant authorization. The upstream SDK source is pinned to a specific commit.                                |
-| Authorization  | GitHub App, server-side sessions, Argon2                            | Installation access is checked using the logged-in user's GitHub authorization before tokens are minted.                                             |
-| Secrets        | AES-GCM / optional Google Cloud KMS                                 | Protects stored customer variables; the master key and deploy identity still require operator custody.                                               |
-| Infrastructure | Portable Kubernetes manifests, EKS example, GKE deployment history  | Exercises cloud operations without changing the ICP target. Cloud networking, storage, ingress, and IAM require provider-specific configuration.     |
-| Quality        | Node test runner, ESLint, Prettier, Rustfmt, Clippy, GitHub Actions | Keeps security regression checks and builds repeatable without live credentials.                                                                     |
+| Layer                     | Choice                                                                        | Reason and trade-off                                                                                                                                   |
+| ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Dashboard                 | React 18, Vite 8, Recharts                                                    | Static UI with a separate analytics bundle and a conventional control API.                                                                             |
+| Control plane             | Node.js 24, Express 4, PostgreSQL 16                                          | Relational account/project state and a durable queue without an additional broker; concurrency remains an application concern.                         |
+| Workers                   | Docker, Kubernetes Jobs, `dfx`                                                | Resource limits and separate credential boundaries; more operational overhead than managed build infrastructure. Containers still share a host kernel. |
+| Asset origin              | Rust, ICP CDK, certified-assets library                                       | Reuses certified asset serving, adding tenant authorization and deployment tickets. The upstream SDK dependency is pinned to a commit.                 |
+| Authorization and secrets | GitHub App, server-side sessions, Argon2, AES-GCM / optional Google Cloud KMS | User-scoped repository access and encrypted stored variables; operators still control encryption keys and deploy identities.                           |
+| Infrastructure and CI     | Kubernetes, EKS example, GitHub Actions                                       | Portable workloads with provider-specific networking/storage/IAM and automated verification.                                                           |
 
-## Run locally
+## Why ICP
 
-Requirements: Node.js 24 with npm, PostgreSQL 16, and Git. Rust and `dfx` are needed for canister work; Docker, Kubernetes, and a network-policy-capable cluster are needed to exercise the deployment pipeline.
+ICP's **reverse-gas model** means canisters pay for their resource consumption; website visitors do not need wallets or tokens. Static query execution currently has no cycle fee, making ICP an interesting asset origin for applications already using the network. See the [official cycle-cost reference](https://docs.internetcomputer.org/references/cycle-costs/).
+
+Storage, uploads and other updates, canister funding, Kubernetes, PostgreSQL, DNS, and any external edge service still cost money. This project does not establish an overall cost advantage over Vercel or another incumbent.
+
+## Explore the code
+
+| Area                                              | Entry point                                                                                                                            |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| API, queue, job scheduling                        | [`backend/src/server.js`](backend/src/server.js)                                                                                       |
+| Installation authorization and request validation | [`backend/src/security/`](backend/src/security/)                                                                                       |
+| Build/deploy pipeline and trusted artifact import | [`scripts/deploy-runner-staged.js`](scripts/deploy-runner-staged.js), [`scripts/security-artifact.cjs`](scripts/security-artifact.cjs) |
+| Tenant authorization and certified asset serving  | [`canister/src/lib.rs`](canister/src/lib.rs)                                                                                           |
+| React dashboard and charts                        | [`frontend/src/`](frontend/src/)                                                                                                       |
+| Kubernetes RBAC, storage and network policy       | [`infra/`](infra/)                                                                                                                     |
+| Security regression tests                         | [`backend/test/`](backend/test/)                                                                                                       |
+
+## Run and verify
 
 ```sh
-nvm use
-npm ci
-npm run check
+npm run check  # ESLint, Prettier, tests, frontend build
 ```
 
-The tests use synthetic inputs, a temporary local Git repository, and a fake `dfx` executable. They do not need cloud credentials or a live canister.
+The 17 security tests cover malformed requests across registered API routes, GitHub installation access decisions, actual build subprocess environments, and malicious artifact imports. A staged-flow test builds a temporary Git repository and uses a fake `dfx`; it does not deploy to ICP. CI additionally runs Rustfmt, Clippy, and release Wasm compilation. Rust currently has no unit tests; live canister authorization and upgrade tests remain a gap.
 
-To run the API and dashboard:
+For the real control plane, create a **PostgreSQL 16** database, then:
 
 ```sh
 cp .env.example backend/.env
-# Edit backend/.env: set DATABASE_URL and ENV_VARS_MASTER_KEY.
-# Generate a master key with: openssl rand -base64 32
-npm run dev:api
+# Fill DATABASE_URL, ENV_VARS_MASTER_KEY and your GitHub App configuration.
+# Generate the master key with: openssl rand -base64 32
+npm run dev:api  # port 3000; applies the ordered SQL migrations
 # In a second terminal:
-npm run dev:ui
+npm run dev:ui   # port 5173; proxies the API
 ```
 
-The API starts on port 3000 and applies the ordered SQL migrations automatically. Vite serves the dashboard on port 5173 and proxies API requests. Create the PostgreSQL database before starting the API.
+Direct account registration is disabled; authenticated use requires your own GitHub App. Customer deployment execution additionally needs Kubernetes and a configured host canister. The [deployment guide](docs/deployment.md) covers image builds, GitHub callbacks, canister setup, Secrets, storage, ingress, and tenant routing. [`.env.example`](.env.example) contains placeholders only.
 
-A real sign-in requires your own GitHub App configuration. Direct account registration is disabled; leaving GitHub unset permits source/UI inspection, not a complete authenticated deployment demo. To receive webhooks locally, use an HTTPS development endpoint and configure the App callbacks accordingly. See [deployment and GitHub setup](docs/deployment.md).
-
-## Environment and deployment
-
-[`.env.example`](.env.example) lists the required configuration and optional GitLab/Stripe settings, with placeholders only. Never put cloud keys, uploader identities, or deploy-ticket signing keys in a project's customer build variables. Frontend build variables are public once bundled into a website.
-
-Build the API/runner and dashboard images from the repository root:
-
-```sh
-docker build --platform linux/amd64 -t a3-backend:local .
-docker build --platform linux/amd64 -f frontend/Dockerfile -t a3-dashboard:local .
-kubectl kustomize infra/k8s/platform/mainnet
-```
-
-These commands build images and render manifests; they do not deploy cloud resources. Follow the [deployment guide](docs/deployment.md) to configure a host canister, signing keys, Kubernetes Secrets, images, storage, networking, and routing. The examples deliberately use placeholder domains and require operator configuration.
-
-## Security work and validation
-
-The public preparation addressed three concrete issues: customer environment variables reaching credential-bearing deployment processes, GitHub installation IDs being trusted without checking the current user's access, and malformed inputs or asynchronous failures escaping API error handling. Regression tests cover all three, including actual build subprocess environments, malicious artifact configuration, and requests through the application's registered routes.
-
-`npm run check` runs lint, formatting, tests, and the dashboard build. CI also runs Rust formatting, Clippy, and a release Wasm build. The Rust library currently has no unit tests; passing its build is not a canister authorization or upgrade integration test. See [security boundaries and verification limits](docs/security.md).
-
-The publication source and the four original repository histories were scanned with Gitleaks before publication. No operational A3 secret was confirmed in those histories; local recovery credentials, database backups, and private configuration were excluded from this repository. This is a preparation check, not a guarantee against future disclosure.
+The public preparation fixed environment leakage into deploy processes, unchecked GitHub installation IDs, and API input/error handling. Source and original histories were scanned with Gitleaks, and private recovery material was excluded. See [security boundaries and verification limits](docs/security.md). Local and CI checks do not prove network-policy enforcement or a live cloud rollout of the hardened version.
 
 ## Lessons learned
 
-**A useful infrastructure project needs a narrower product case.** The ICP developer market is small, and many general-purpose frontend projects can already use a free incumbent tier. A familiar Git workflow alone is a weak reason to switch. A3's clearest audience is developers who specifically want ICP-hosted static assets; operating Kubernetes creates a fixed cost that low query costs do not erase.
+**Product focus matters.** The ICP market is small, and many frontend projects can already use a free incumbent tier. A familiar Git workflow alone is a weak switching incentive. A3's clearest audience is developers specifically seeking ICP-hosted assets; low query costs do not erase Kubernetes' fixed costs.
 
-**Shared canisters trade efficiency for responsibility.** Sharing reduces per-site provisioning, but sites compete for storage and operational attention. Tenant prefixes and signed tickets constrain writes; they do not give each customer their own canister controller or independent failure domain. A compromised operator or uploader remains significant.
+**Shared canisters need explicit trade-offs.** Tenant checks and signed tickets constrain writes, but customers still share capacity and an operator-controlled failure domain. Sharing does not provide independent canister ownership.
 
-**Builds are untrusted execution.** Separating jobs is necessary, and importing a build's `dfx.json` would defeat that separation. The deploy job now copies validated static bytes into a fresh directory and creates its own configuration. Live network-policy enforcement and stronger sandboxing remain important operational work.
+**Untrusted builds need boundaries from the start.** Separate jobs are insufficient if the deploy step trusts generated configuration. Reconstructing configuration from validated static output is part of the security boundary. Stronger worker sandboxing and live isolation tests would be priorities in a next iteration.
 
-**I would simplify the first version.** Start with a single cloud, explicit static-site support, a smaller control-plane module, a cost model, and security tests before adding billing and provider breadth. Measure retained users, deployment success, and operator cost rather than relying on cumulative account or deployment totals.
+**I would simplify the first version.** Start with one cloud, a smaller control-plane module, explicit static-site support, security tests, and a measured cost model before billing or provider breadth. Track retention, deployment success, and cost per active site alongside cumulative pilot totals.
 
 ## Roadmap
 
-- Complete **Eject**: provision a dedicated canister, transfer controller ownership, and verify who funds and operates it afterward.
-- Add a clear retention policy and **cleanup of idle sites**, with owner notification and recovery expectations.
-- Add live canister authorization/upgrade tests and cluster tests for metadata access and network-policy enforcement.
-- Improve worker sandboxing, artifact provenance, operational metrics, and measured cost per active site.
+- **Eject:** complete dedicated-canister provisioning and verified controller ownership hand-off. Currently incomplete and disabled by default.
+- **Idle-site cleanup:** define retention, owner notification, and recovery behavior.
+- Add live canister authorization/upgrade tests and cluster tests for metadata denial and network-policy enforcement.
+- Improve sandboxing, artifact provenance, operational metrics, and measured cost per active site.
 
 ## License
 
-[MIT](LICENSE). Upstream dependencies retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
+[MIT](LICENSE). Dependencies retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
